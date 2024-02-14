@@ -4,7 +4,7 @@ import math
 class SimulatorBase:
 
     # Number of order book levels
-    _NO_OF_ORDERBOOK_LEVELS = 10
+    NO_OF_ORDERBOOK_LEVELS = 10
     
     # price -> size; There are the algo's orders
     BID_ALGO_ORDERS = {}
@@ -56,7 +56,7 @@ class SimulatorBase:
         self.BID_SIM_ORDER_BOOK = {}
         self.ASK_SIM_ORDER_BOOK = {}
         
-        for i in range(self._NO_OF_ORDERBOOK_LEVELS):    
+        for i in range(self.NO_OF_ORDERBOOK_LEVELS):    
             bid_px = raw_orderbook_row[f'bid_px_{i:02.0f}']
             ask_px = raw_orderbook_row[f'ask_px_{i:02.0f}']
             bid_sz = raw_orderbook_row[f'bid_sz_{i:02.0f}']
