@@ -1,0 +1,3 @@
+Place the data in this folder.
+Each data source/vendor is going to have it's own format. 
+This project currently only supports databento MBP-10 data, support for other formats can be added by writing a data parser. 
