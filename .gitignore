@@ -1,5 +1,6 @@
-*.dbm.zst
-*.dbm
+# Databento file format
+*.dbn.zst
+*.dbn
 
 
 # Byte-compiled / optimized / DLL files

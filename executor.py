@@ -6,16 +6,14 @@ class SimpleExecutor1(SimpleSingleTickerSimulator):
     based on market conditions and inventory levels to optimize order placement and management.
     """
 
-    def __init__(self, ticker, max_inventory, order_size_ratio=0.1):
+    def __init__(self, ticker, order_size_ratio=0.1, **kwargs):
         """
         Initializes the bot with specific trading parameters.
 
         :param ticker: The ticker symbol for trading.
-        :param max_inventory: Maximum inventory level for risk management.
         :param order_size_ratio: Ratio to determine the size of the orders.
         """
-        super().__init__(ticker)
-        self.max_inventory = max_inventory
+        super().__init__(ticker, **kwargs)
         self.order_size_ratio = order_size_ratio
 
     def run_algo(self, bid_orderbook, ask_orderbook, inventory, bid_orders, ask_orders):
@@ -41,10 +39,6 @@ class SimpleExecutor1(SimpleSingleTickerSimulator):
                 self.cancel_order(price, side=side)
 
     def is_order_within_top_levels(self, price, orderbook, side):
-        """
-        Checks if an order is within the top levels of the order book.
-        """
-        
         if side == 'ASK':
             top_level_price = orderbook[0][0]
             bottom_level_price = orderbook[self.NO_OF_ORDERBOOK_LEVELS - 1][0]
@@ -56,11 +50,25 @@ class SimpleExecutor1(SimpleSingleTickerSimulator):
         else:
             raise ValueError('Invalid Side??')
 
+    def is_order_better_than_best(self, price, orderbook, side):
+        if side == 'ASK':
+            top_level_price = orderbook[0][0]
+            return top_level_price > price 
+        elif side == 'BID':
+            top_level_price = orderbook[0][0]
+            return top_level_price < price 
+        else:
+            raise ValueError('Invalid Side??')
+
+
     def place_or_adjust_order(self, orderbook, orders, inventory, side, target_price):
         """
         Places or adjusts an order at a target price.
         """
         target_price = round(target_price,  2)
+        if self.is_order_better_than_best(target_price, orderbook, side):
+            target_price = orderbook[0][0]
+
         if len(orders) == 0:
             if self.is_order_within_top_levels(target_price, orderbook, side):
                 size = self.calculate_order_size(orderbook, inventory, side)
@@ -78,8 +86,8 @@ class SimpleExecutor1(SimpleSingleTickerSimulator):
         """
         Calculates order size dynamically based on market depth and inventory.
         """
-        market_depth_size = orderbook[1][1]  # Using level 2 for size reference
-        return int(market_depth_size * self.order_size_ratio)
+        market_depth_size = orderbook[1][1]  # Using level 1 for size reference
+        return min(int(market_depth_size * self.order_size_ratio), 200)
 
     def adjust_orders_based_on_market(self, bid_orderbook, ask_orderbook, inventory, bid_orders, ask_orders):
         """
