@@ -204,10 +204,10 @@ class SimulatorBase:
         pnl = capital + position * self.BOT_FILLS[-1]['price']
         trading_pnl = ((trades_df['midprice'] - trades_df['price']) * trades_df['size']).sum()
 
-
         time = trades_df['ts'].diff().dt.total_seconds().shift(-1) 
         avg_size = (time * trades_df['size'].abs()).sum() / time.sum()
         average_inventory = avg_size
+        trading_volume = trades_df['size'].abs().sum()
 
 
         print(f"{capital=}, {position=}, {pnl=}, {trading_pnl=}")
@@ -217,6 +217,7 @@ class SimulatorBase:
         self.output_data['net_pnl'] = pnl
         self.output_data['trading_pnl'] = trading_pnl
         self.output_data['average_inventory'] = average_inventory
+        self.output_data['trading_volume'] = trading_volume
         
         self.output_data['trades'] = trades_df
         self.output_data['quotes'] = quotes_df
