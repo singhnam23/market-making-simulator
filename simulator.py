@@ -201,24 +201,32 @@ class SimulatorBase:
         
         capital = (trades_df['price'] * trades_df['size']).sum() * -1
         position = trades_df['size'].sum()            
-        pnl = capital + position * self.BOT_FILLS[-1]['price']
-        trading_pnl = ((trades_df['midprice'] - trades_df['price']) * trades_df['size']).sum()
+
+        trading_volume = trades_df['size'].abs().sum()
+        rebate = 0.01 * trading_volume
+        pnl = capital + position * self.BOT_FILLS[-1]['price'] + rebate
+        trading_pnl = ((trades_df['midprice'] - trades_df['price']) * trades_df['size']).sum() + rebate
 
         time = trades_df['ts'].diff().dt.total_seconds().shift(-1) 
-        avg_size = (time * trades_df['size'].abs()).sum() / time.sum()
-        average_inventory = avg_size
-        trading_volume = trades_df['size'].abs().sum()
+        avg_size = (time * trades_df['size'].abs()).sum() / time.sum()        
+        avg_size_square = (time * trades_df['size'].abs().pow(2)).sum() / time.sum()
+        
+        volatility = self.static_params_df['sigma_1min'].mean()
+        net_return = self.static_params_df['midprice'].iloc[0] - self.static_params_df['midprice'].iloc[-1]
 
-
-        print(f"{capital=}, {position=}, {pnl=}, {trading_pnl=}")
+        print(f"{capital=} {position=} {pnl=} {trading_pnl=} {trading_volume=} {avg_size=} {avg_size_square=}")
 
         self.output_data['eod_position'] = position
         self.output_data['eod_cash'] = capital
         self.output_data['net_pnl'] = pnl
         self.output_data['trading_pnl'] = trading_pnl
-        self.output_data['average_inventory'] = average_inventory
+        self.output_data['avg_size'] = avg_size
+        self.output_data['avg_size_square'] = avg_size_square
         self.output_data['trading_volume'] = trading_volume
-        
+
+        self.output_data['volatility'] = volatility
+        self.output_data['net_return'] = net_return
+
         self.output_data['trades'] = trades_df
         self.output_data['quotes'] = quotes_df
 

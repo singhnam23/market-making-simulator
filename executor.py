@@ -87,7 +87,7 @@ class SimpleExecutor1(SimpleSingleTickerSimulator):
         Calculates order size dynamically based on market depth and inventory.
         """
         market_depth_size = orderbook[1][1]  # Using level 1 for size reference
-        return min(int(market_depth_size * self.order_size_ratio), 200)
+        return min(int(market_depth_size * self.order_size_ratio), 100)
 
     def adjust_orders_based_on_market(self, bid_orderbook, ask_orderbook, inventory, bid_orders, ask_orders):
         """

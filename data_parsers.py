@@ -21,10 +21,10 @@ def databento_file_parser(file_path):
     df.index = df.index.tz_localize(None)
     df['ts_event'] = df['ts_event'].dt.tz_localize(None)
 
-    open_ts = pd.to_datetime(str(df.ts_event.iloc[0].date()) + ' 14:30:00')
+    open_ts = pd.to_datetime(str(df.ts_event.iloc[0].date()) + ' 14:00:00')
     df = df[df['ts_event'] > open_ts]
 
-    close_ts = pd.to_datetime(str(df.ts_event.iloc[0].date()) + ' 21:00:00')
+    close_ts = pd.to_datetime(str(df.ts_event.iloc[0].date()) + ' 20:00:00')
     df = df[df['ts_event'] < close_ts]
 
     return df
