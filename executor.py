@@ -5,7 +5,6 @@ class SimpleExecutor1(SimpleSingleTickerSimulator):
     BOT1 is a market-making bot designed for a single ticker. It makes trading decisions 
     based on market conditions and inventory levels to optimize order placement and management.
     """
-
     def __init__(self, ticker, order_size_ratio=0.1, **kwargs):
         """
         Initializes the bot with specific trading parameters.

@@ -19,10 +19,11 @@ class SimulatorBase:
     sigma_5min = 0.1
     sigma_15min = 0.1
 
-    def __init__(self, ticker, verbose=True, print_freq=50000):
+    def __init__(self, ticker, verbose=True, print_freq=1_000_000, latency=0):
         self.ticker = ticker
         self.verbose = verbose
         self.print_freq = print_freq
+        self.latency = latency
 
         # Explicitly initialize mutable types
 
@@ -34,11 +35,14 @@ class SimulatorBase:
         self.BID_SIM_ORDER_BOOK = {}
         self.ASK_SIM_ORDER_BOOK = {}
 
+        self.BOT_ACTION_QUEUE = []
+        self.ACTIONS_QUEUE_MAX_LEN = 8
+        self.current_orderbook_action = 'T'
+
         # Monitoring and results
         self.BOT_FILLS = []
         self.BOT_QUOTES = []
         self.output_data = {}
-
 
     def is_verbose_cnt(self):
         return self.verbose and self.cnt % self.print_freq == 0
@@ -47,7 +51,9 @@ class SimulatorBase:
         
         timestamp = raw_orderbook_row['ts_event']
         action = raw_orderbook_row['action']        
-        midprice = (raw_orderbook_row['bid_px_00'] + raw_orderbook_row['ask_px_00'])/2        
+        midprice = (raw_orderbook_row['bid_px_00'] + raw_orderbook_row['ask_px_00'])/2
+
+        self.current_orderbook_action = action
 
         if self.current_ts == 0:
             self.current_ts = timestamp
@@ -136,30 +142,58 @@ class SimulatorBase:
                                 
             self.cnt += 1
 
+            actions_processed = 0
+            for order_action in self.BOT_ACTION_QUEUE:
+                if order_action['ts'] + pd.Timedelta(milliseconds=self.latency) <= self.current_ts:
+                    self.process_order_action(order_action)
+                    actions_processed += 1
+                else:
+                    break
+
+            self.BOT_ACTION_QUEUE = self.BOT_ACTION_QUEUE[actions_processed:]
+
             if self.is_verbose_cnt():
                 print(f"{self.current_ts=} \n{self.BID_SIM_ORDER_BOOK=} \n{self.ASK_SIM_ORDER_BOOK=} \n{self.BID_ALGO_ORDERS=} \n{self.ASK_ALGO_ORDERS=} \n{self.ALGO_POSITION=} \n")
 
         self.build_output_data()
 
     ## Interface for the BOT
-    def place_order(self, price, size, side='ASK'):
+    def process_order_action(self, order_action):
+
+        action = order_action['action']
+        side = order_action['side']
+        price = order_action['price']
         
         if side == 'ASK':
             orderbook_dict = self.ASK_ALGO_ORDERS
         else:
             orderbook_dict = self.BID_ALGO_ORDERS
-            
-        orderbook_dict[price] = size
+        
+        if action == 'PLACE':
+            orderbook_dict[price] = order_action['size']
+        elif action == 'CANCEL':
+            if price in orderbook_dict:
+                del orderbook_dict[price]
+        else:
+            raise ValueError(f'Invalid option type f{action}')
+
+    ## Interface for the BOT
+    def place_order(self, price, size, side='ASK'):
+        
+        if len(self.BOT_ACTION_QUEUE) <= self.ACTIONS_QUEUE_MAX_LEN:
+            self.BOT_ACTION_QUEUE.append({'action': 'PLACE', 
+                                        'price': price, 
+                                        'side': side, 
+                                        'size': size, 
+                                        'ts': self.current_ts})
 
     def cancel_order(self, price, side='ASK'):
         
-        if side == 'ASK':
-            orderbook_dict = self.ASK_ALGO_ORDERS
-        else:
-            orderbook_dict = self.BID_ALGO_ORDERS
-        
-        if price in orderbook_dict:
-            del orderbook_dict[price]
+        if len(self.BOT_ACTION_QUEUE) <= self.ACTIONS_QUEUE_MAX_LEN:
+            self.BOT_ACTION_QUEUE.append({'action': 'CANCEL', 
+                                        'price': price, 
+                                        'side': side, 
+                                        'ts': self.current_ts})
 
     #To be overwritten by the Executor Class
     def run_algo(self, bid_orderbook, ask_orderbook, inventory, bid_orders, ask_orders):
@@ -198,6 +232,9 @@ class SimulatorBase:
 
         trades_df = pd.DataFrame(self.BOT_FILLS)
         quotes_df = pd.DataFrame(self.BOT_QUOTES)
+
+        if len(trades_df) == 0:
+            trades_df = pd.DataFrame(columns=['ts', 'price', 'size', 'midprice'])
         
         capital = (trades_df['price'] * trades_df['size']).sum() * -1
         position = trades_df['size'].sum()            
