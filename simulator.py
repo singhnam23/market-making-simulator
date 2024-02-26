@@ -55,8 +55,8 @@ class SimulatorBase:
 
         self.current_orderbook_action = action
 
-        if self.current_ts == 0:
-            self.current_ts = timestamp
+        if self.cnt == 0:
+            self.construct_combined_orderbook(raw_orderbook_row)            
         
         assert timestamp >= self.current_ts, f"WTF? Trying to go back in time? {timestamp=} {self.current_ts=}"
         
@@ -233,15 +233,18 @@ class SimulatorBase:
         trades_df = pd.DataFrame(self.BOT_FILLS)
         quotes_df = pd.DataFrame(self.BOT_QUOTES)
 
+        last_mid = (self.BOT_QUOTES[-1]['best_bid'] + self.BOT_QUOTES[-1]['best_ask']) / 2
+
         if len(trades_df) == 0:
             trades_df = pd.DataFrame(columns=['ts', 'price', 'size', 'midprice'])
+            trades_df['ts'] = pd.to_datetime(trades_df['ts'])
         
         capital = (trades_df['price'] * trades_df['size']).sum() * -1
         position = trades_df['size'].sum()            
 
         trading_volume = trades_df['size'].abs().sum()
         rebate = 0.01 * trading_volume
-        pnl = capital + position * self.BOT_FILLS[-1]['price'] + rebate
+        pnl = capital + position * last_mid + rebate
         trading_pnl = ((trades_df['midprice'] - trades_df['price']) * trades_df['size']).sum() + rebate
 
         time = trades_df['ts'].diff().dt.total_seconds().shift(-1) 
